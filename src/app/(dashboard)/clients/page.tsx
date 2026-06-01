@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Plus, Search, MoreHorizontal, Eye, Trash2, Users,
-  Phone, Mail, MapPin, Loader2,
+  Phone, Mail, MapPin, Loader2, Pencil,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CreateClientDialog } from "@/components/clients/create-client-dialog";
+import { EditClientDialog, type EditableClient } from "@/components/clients/edit-client-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -38,6 +39,7 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  const [editClient, setEditClient] = useState<EditableClient | null>(null);
 
   const fetchClients = useCallback(async () => {
     try {
@@ -55,10 +57,22 @@ export default function ClientsPage() {
 
   useEffect(() => { fetchClients(); }, [fetchClients]);
 
-  const deleteClient = (id: string) => {
+  const deleteClient = async (id: string) => {
+    const removed = clients.find(c => c.id === id);
     setClients(prev => prev.filter(c => c.id !== id));
-    toast.success("Client deleted");
-    fetch(`/api/clients/${id}`, { method: "DELETE" }).catch(() => {});
+    try {
+      const res = await fetch(`/api/clients/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        if (removed) setClients(prev => [removed, ...prev]);
+        toast.error(json.error ?? "Failed to delete client");
+      } else {
+        toast.success("Client deleted");
+      }
+    } catch {
+      if (removed) setClients(prev => [removed, ...prev]);
+      toast.error("Failed to delete client");
+    }
   };
 
   const filtered = clients.filter((c) =>
@@ -161,6 +175,9 @@ export default function ClientsPage() {
                               <Eye className="w-4 h-4" /> View Profile
                             </Link>
                           </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2" onClick={() => setEditClient(client)}>
+                            <Pencil className="w-4 h-4" /> Edit
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="gap-2 text-red-600 focus:text-red-600" onClick={() => deleteClient(client.id)}>
                             <Trash2 className="w-4 h-4" /> Delete
@@ -241,6 +258,20 @@ export default function ClientsPage() {
             totalPaid: 0,
             totalDue: 0,
           }, ...prev]);
+        }}
+      />
+
+      <EditClientDialog
+        open={!!editClient}
+        onOpenChange={(open) => { if (!open) setEditClient(null); }}
+        client={editClient}
+        onUpdated={(updated) => {
+          setClients(prev => prev.map(c =>
+            c.id === updated.id
+              ? { ...c, name: updated.name, phone: updated.phone, email: updated.email, company: updated.company, address: updated.address }
+              : c
+          ));
+          setEditClient(null);
         }}
       />
     </div>

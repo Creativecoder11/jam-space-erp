@@ -71,10 +71,22 @@ export default function ProjectsPage() {
 
   useEffect(() => { fetchProjects(); }, [fetchProjects]);
 
-  const deleteProject = (id: string) => {
+  const deleteProject = async (id: string) => {
+    const removed = projects.find(p => p.id === id);
     setProjects(prev => prev.filter(p => p.id !== id));
-    toast.success("Project deleted");
-    fetch(`/api/projects/${id}`, { method: "DELETE" }).catch(() => {});
+    try {
+      const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        if (removed) setProjects(prev => [removed, ...prev]);
+        toast.error(json.error ?? "Failed to delete project");
+      } else {
+        toast.success("Project deleted");
+      }
+    } catch {
+      if (removed) setProjects(prev => [removed, ...prev]);
+      toast.error("Failed to delete project");
+    }
   };
 
   const filtered = projects.filter((p) => {

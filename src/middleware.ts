@@ -6,26 +6,17 @@ export default withAuth(
     const { pathname } = req.nextUrl;
     const token = req.nextauth.token;
 
-    // Redirect to login if not authenticated
-    if (!token && !pathname.startsWith("/login") && !pathname.startsWith("/api/auth")) {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
-
-    // Redirect to dashboard if already authenticated and visiting auth pages
-    if (token && pathname.startsWith("/login")) {
+    // Authenticated user visiting login → send to dashboard
+    if (token && pathname === "/login") {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
 
     // Role-based route protection
     if (token) {
       const role = token.role as string;
-
-      // Only super admin can access user management
       if (pathname.startsWith("/users") && role !== "SUPER_ADMIN") {
         return NextResponse.redirect(new URL("/dashboard", req.url));
       }
-
-      // Only super admin can access settings
       if (pathname.startsWith("/settings") && role !== "SUPER_ADMIN") {
         return NextResponse.redirect(new URL("/dashboard", req.url));
       }
@@ -35,19 +26,21 @@ export default withAuth(
   },
   {
     callbacks: {
+      // returning false causes withAuth to redirect to pages.signIn below
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl;
-        if (pathname.startsWith("/login") || pathname.startsWith("/api/auth")) {
-          return true;
-        }
+        if (pathname === "/login") return true;
         return !!token;
       },
+    },
+    pages: {
+      signIn: "/login",
     },
   }
 );
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|public).*)",
-  ],
+  // Excludes Next.js internals, static files, and NextAuth's own API routes
+  // so the middleware never intercepts its own auth endpoints.
+  matcher: ["/((?!_next/static|_next/image|favicon\\.ico|api/auth).*)"],
 };

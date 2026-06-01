@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,7 +22,6 @@ import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import Image from "next/image";
 
 const navItems = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -62,8 +60,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {/* Logo */}
         <div className="flex items-center h-16 px-4 border-b border-sidebar-border shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shrink-0 shadow-lg">
-              <Image src="/assets/Jam - Logo.png" alt="Logo" height={20} width={20} />
+            <div className="w-12 h-12 rounded-xl  flex items-center justify-center shrink-0 shadow-lg">
+              <img
+                src="/assets/Jam%20-%20Logo.png"
+                alt="Jam Space logo"
+                width={30}
+                height={30}
+                className="h-5 w-5 object-contain"
+              />
             </div>
             <AnimatePresence>
               {!collapsed && (
