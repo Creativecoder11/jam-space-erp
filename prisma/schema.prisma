@@ -1,0 +1,276 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ACCOUNTANT
+  PROJECT_MANAGER
+  STAFF
+}
+
+enum ProjectType {
+  INTERIOR_DESIGN
+  REAL_ESTATE
+  BOTH
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentType {
+  CASH
+  BANK_TRANSFER
+  MOBILE_BANKING
+  CHEQUE
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+}
+
+enum CostPaymentStatus {
+  PAID
+  UNPAID
+  PARTIAL
+}
+
+model User {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  email         String         @unique
+  password      String
+  role          Role           @default(STAFF)
+  avatar        String?
+  phone         String?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  activityLogs  ActivityLog[]
+  notifications Notification[]
+  projects      Project[]      @relation("ProjectManager")
+
+  @@map("users")
+}
+
+model Client {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String?
+  phone     String
+  address   String?
+  company   String?
+  notes     String?
+  avatar    String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  projects  Project[]
+
+  @@map("clients")
+}
+
+model Project {
+  id               String          @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  type             ProjectType
+  status           ProjectStatus   @default(PLANNING)
+  location         String?
+  description      String?
+  startDate        DateTime
+  estimatedEndDate DateTime?
+  actualEndDate    DateTime?
+  progress         Int             @default(0)
+
+  clientId         String          @db.ObjectId
+  client           Client          @relation(fields: [clientId], references: [id])
+
+  managerId        String?         @db.ObjectId
+  manager          User?           @relation("ProjectManager", fields: [managerId], references: [id])
+
+  estimatedBudget  Float           @default(0)
+  totalCost        Float           @default(0)
+  totalPaid        Float           @default(0)
+  totalDue         Float           @default(0)
+  expectedProfit   Float           @default(0)
+
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  payments         ProjectPayment[]
+  costs            ProjectCost[]
+  documents        Document[]
+  notes            ProjectNote[]
+  activityLogs     ActivityLog[]
+  invoices         Invoice[]
+
+  @@map("projects")
+}
+
+// categoryId stores the short key ("board", "hpl", etc.) — no separate category collection needed
+model ProjectCost {
+  id            String            @id @default(auto()) @map("_id") @db.ObjectId
+  projectId     String            @db.ObjectId
+  project       Project           @relation(fields: [projectId], references: [id])
+  categoryId    String
+
+  date          DateTime
+  invoiceNo     String?
+  description   String
+  vendorName    String?
+  quantity      Float
+  unit          String?
+  unitPrice     Float
+  totalCost     Float
+  paymentStatus CostPaymentStatus @default(UNPAID)
+  notes         String?
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@map("project_costs")
+}
+
+model ProjectPayment {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  projectId   String      @db.ObjectId
+  project     Project     @relation(fields: [projectId], references: [id])
+
+  amount      Float
+  paymentType PaymentType
+  paymentDate DateTime
+  description String?
+  referenceNo String?
+  receiptUrl  String?
+  stage       String?
+  notes       String?
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("project_payments")
+}
+
+model Invoice {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceNo   String        @unique
+  projectId   String        @db.ObjectId
+  project     Project       @relation(fields: [projectId], references: [id])
+
+  issueDate   DateTime      @default(now())
+  dueDate     DateTime?
+  amount      Float
+  tax         Float         @default(0)
+  discount    Float         @default(0)
+  totalAmount Float
+  status      PaymentStatus @default(PENDING)
+  notes       String?
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("invoices")
+}
+
+model Document {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  projectId   String   @db.ObjectId
+  project     Project  @relation(fields: [projectId], references: [id])
+  name        String
+  fileUrl     String
+  fileType    String?
+  fileSize    Int?
+  description String?
+  uploadedAt  DateTime @default(now())
+
+  @@map("documents")
+}
+
+model ProjectNote {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  projectId String   @db.ObjectId
+  project   Project  @relation(fields: [projectId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("project_notes")
+}
+
+model ActivityLog {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String?  @db.ObjectId
+  user        User?    @relation(fields: [userId], references: [id])
+  projectId   String?  @db.ObjectId
+  project     Project? @relation(fields: [projectId], references: [id])
+  action      String
+  entity      String
+  entityId    String?
+  description String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@map("activity_logs")
+}
+
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+model CompanyExpense {
+  id            String            @id @default(auto()) @map("_id") @db.ObjectId
+  date          DateTime
+  category      String
+  description   String
+  amount        Float
+  vendorName    String?
+  invoiceNo     String?
+  paymentStatus CostPaymentStatus @default(UNPAID)
+  notes         String?
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@map("company_expenses")
+}
+
+model CompanySettings {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  logo          String?
+  email         String?
+  phone         String?
+  address       String?
+  website       String?
+  currency      String   @default("BDT")
+  taxRate       Float    @default(0)
+  invoicePrefix String   @default("INV")
+  updatedAt     DateTime @updatedAt
+
+  @@map("company_settings")
+}
