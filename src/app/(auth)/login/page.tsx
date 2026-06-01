@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -72,18 +73,29 @@ export default function LoginPage() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 mb-4 shadow-lg shadow-blue-500/25">
-            <Building2 className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-white">Jam Space ERP</h1>
-          <p className="text-slate-400 mt-1">Real Estate & Interior Design Platform</p>
+          {/* <Image
+            src="/assets/Jam - Logo.png"
+            alt="Jamroll Space logo"
+            width={30}
+            height={30}
+            className="object-contain"
+          /> */}
+
+          <h1 className="text-3xl font-bold text-white">Jamroll Space ERP</h1>
+          <p className="text-slate-400 mt-1">
+            Real Estate & Interior Design Platform
+          </p>
         </div>
 
         {/* Card */}
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-white">Sign in to your account</h2>
-            <p className="text-slate-400 text-sm mt-1">Enter your credentials to continue</p>
+            <h2 className="text-xl font-semibold text-white">
+              Sign in to your account
+            </h2>
+            <p className="text-slate-400 text-sm mt-1">
+              Enter your credentials to continue
+            </p>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -94,7 +106,7 @@ export default function LoginPage() {
                 <Input
                   {...register("email")}
                   type="email"
-                  placeholder="admin@jamspace.com"
+                  placeholder="admin@jamroll.space"
                   className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-blue-500"
                   autoComplete="email"
                 />
@@ -120,11 +132,17 @@ export default function LoginPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               </div>
               {errors.password && (
-                <p className="text-red-400 text-xs">{errors.password.message}</p>
+                <p className="text-red-400 text-xs">
+                  {errors.password.message}
+                </p>
               )}
             </div>
 
@@ -144,15 +162,15 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-white/10">
+          {/* <div className="mt-6 pt-6 border-t border-white/10">
             <p className="text-center text-xs text-slate-500">
-              Demo credentials: admin@jamspace.com / password123
+              Demo credentials: admin@jamroll.space / password123
             </p>
-          </div>
+          </div> */}
         </div>
 
         <p className="text-center text-slate-500 text-sm mt-6">
-          © 2026 Jam Space ERP. All rights reserved.
+          © 2026 Jamroll Space ERP. All rights reserved.
         </p>
       </motion.div>
     </div>

@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 
 // Demo users — work without a database connection
 const DEMO_USERS = [
-  { id: "demo-admin", email: "admin@jamspace.com", name: "Admin User", role: "SUPER_ADMIN", password: "password123" },
+  { id: "demo-admin", email: "admin@jamroll.space", name: "Admin User", role: "SUPER_ADMIN", password: "password123" },
   { id: "demo-acc", email: "accountant@jamspace.com", name: "Accountant", role: "ACCOUNTANT", password: "password123" },
   { id: "demo-pm", email: "pm@jamspace.com", name: "Project Manager", role: "PROJECT_MANAGER", password: "password123" },
 ];

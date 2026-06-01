@@ -11,10 +11,10 @@ async function main() {
 
   // Users — upsert by email
   const admin = await prisma.user.upsert({
-    where: { email: "admin@jamspace.com" },
+    where: { email: "admin@jamroll.space" },
     update: {},
     create: {
-      email: "admin@jamspace.com",
+      email: "admin@jamroll.space",
       name: "Admin User",
       password: hashedPassword,
       role: Role.SUPER_ADMIN,
@@ -186,7 +186,7 @@ async function main() {
   console.log("✅ Company settings created");
   console.log("🎉 Seed completed!");
   console.log("\n📋 Login credentials:");
-  console.log("   Admin:   admin@jamspace.com / password123");
+  console.log("   Admin:   admin@jamroll.space / password123");
   console.log("   Accountant: accountant@jamspace.com / password123");
   console.log("   PM:      pm@jamspace.com / password123");
 }
