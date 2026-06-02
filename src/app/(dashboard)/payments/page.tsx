@@ -97,9 +97,9 @@ export default function PaymentsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Payment Management</h1>
           <p className="text-muted-foreground text-sm mt-1">Track all client payments and installments</p>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="gap-2">
+        {/* <Button onClick={() => setAddOpen(true)} className="gap-2">
           <Plus className="w-4 h-4" /> Record Payment
-        </Button>
+        </Button> */}
       </motion.div>
 
       {/* Summary Cards */}

@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import {
   Plus, Search, Trash2, Pencil, MoreHorizontal, Loader2,
   Building2, FolderKanban, TrendingUp, ChevronLeft, ChevronRight,
+  CalendarDays, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,8 @@ export default function CostsPage() {
   const [companySearch, setCompanySearch] = useState("");
   const [companyCategoryFilter, setCompanyCategoryFilter] = useState("all");
   const [companyStatusFilter, setCompanyStatusFilter] = useState("all");
+  const [companyDateFrom, setCompanyDateFrom] = useState("");
+  const [companyDateTo, setCompanyDateTo] = useState("");
   const [addCompanyExpenseOpen, setAddCompanyExpenseOpen] = useState(false);
   const [editingCompanyExpense, setEditingCompanyExpense] = useState<CompanyExpenseRecord | null>(null);
 
@@ -54,6 +57,8 @@ export default function CostsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [projectSearch, setProjectSearch] = useState("");
   const [projectStatusFilter, setProjectStatusFilter] = useState("all");
+  const [projectDateFrom, setProjectDateFrom] = useState("");
+  const [projectDateTo, setProjectDateTo] = useState("");
   const [projectPage, setProjectPage] = useState(1);
   const [addProjectExpenseOpen, setAddProjectExpenseOpen] = useState(false);
   const [editingProjectCost, setEditingProjectCost] = useState<ProjectCostRecord | null>(null);
@@ -173,15 +178,18 @@ export default function CostsPage() {
       const matchSearch = !projectSearch || e.description.toLowerCase().includes(projectSearch.toLowerCase()) ||
         (e.vendor ?? "").toLowerCase().includes(projectSearch.toLowerCase());
       const matchStatus = projectStatusFilter === "all" || e.status === projectStatusFilter;
-      return matchProject && matchCategory && matchSearch && matchStatus;
+      const d = e.date instanceof Date ? e.date : new Date(e.date);
+      const matchFrom = !projectDateFrom || d >= new Date(projectDateFrom);
+      const matchTo = !projectDateTo || d <= new Date(projectDateTo + "T23:59:59");
+      return matchProject && matchCategory && matchSearch && matchStatus && matchFrom && matchTo;
     });
-  }, [projectCosts, selectedProject, selectedCategory, projectSearch, projectStatusFilter]);
+  }, [projectCosts, selectedProject, selectedCategory, projectSearch, projectStatusFilter, projectDateFrom, projectDateTo]);
 
   const totalProjectPages = Math.ceil(filteredProjectCosts.length / PAGE_SIZE);
   const pagedProjectCosts = filteredProjectCosts.slice((projectPage - 1) * PAGE_SIZE, projectPage * PAGE_SIZE);
 
   // reset page when filters change
-  useEffect(() => { setProjectPage(1); }, [selectedProject, selectedCategory, projectSearch, projectStatusFilter]);
+  useEffect(() => { setProjectPage(1); }, [selectedProject, selectedCategory, projectSearch, projectStatusFilter, projectDateFrom, projectDateTo]);
 
   // ── Company expense filtered ──
   const filteredCompanyExpenses = companyExpenses.filter(e => {
@@ -190,7 +198,10 @@ export default function CostsPage() {
       e.category.toLowerCase().includes(companySearch.toLowerCase());
     const matchCat = companyCategoryFilter === "all" || e.category === companyCategoryFilter;
     const matchStatus = companyStatusFilter === "all" || e.paymentStatus === companyStatusFilter;
-    return matchSearch && matchCat && matchStatus;
+    const d = e.date instanceof Date ? e.date : new Date(e.date);
+    const matchFrom = !companyDateFrom || d >= new Date(companyDateFrom);
+    const matchTo = !companyDateTo || d <= new Date(companyDateTo + "T23:59:59");
+    return matchSearch && matchCat && matchStatus && matchFrom && matchTo;
   });
 
   const companyCatTotals = COMPANY_EXPENSE_CATEGORIES.map(cat => ({
@@ -278,46 +289,94 @@ export default function CostsPage() {
             </Button>
           </div>
 
-          {/* category chips */}
-          {/* {companyCatTotals.length > 0 && (
-            <div className="overflow-x-auto pb-2">
-              <div className="flex gap-3 min-w-max">
-                {companyCatTotals.map((cat, i) => (
-                  <motion.div key={cat.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}>
-                    <Card
-                      className={cn("min-w-36 cursor-pointer transition-all border-2",
-                        companyCategoryFilter === cat.name ? "border-primary" : "border-transparent hover:border-border"
-                      )}
-                      onClick={() => setCompanyCategoryFilter(companyCategoryFilter === cat.name ? "all" : cat.name)}
-                    >
-                      <CardContent className="p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: cat.color }} />
-                          <span className="text-xs font-medium truncate">{cat.name}</span>
-                        </div>
-                        <p className="text-sm font-bold">৳{cat.total.toLocaleString("en-IN")}</p>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
+          {/* ── Category chips ── */}
+          <div>
+            <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wider">Filter by Category</p>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setCompanyCategoryFilter("all")}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
+                  companyCategoryFilter === "all"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background border-border hover:border-primary hover:text-primary"
+                )}
+              >
+                All Categories
+              </button>
+              {COMPANY_EXPENSE_CATEGORIES.map(cat => {
+                const count = companyExpenses.filter(e => e.category === cat.name).length;
+                if (count === 0) return null;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setCompanyCategoryFilter(companyCategoryFilter === cat.name ? "all" : cat.name)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-medium border transition-all flex items-center gap-1.5",
+                      companyCategoryFilter === cat.name
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-border hover:border-primary hover:text-primary"
+                    )}
+                  >
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cat.color }} />
+                    <span className="max-w-[120px] truncate">{cat.name}</span>
+                    <span className={cn("opacity-70", companyCategoryFilter === cat.name ? "text-primary-foreground" : "")}>
+                      ({count})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── Search + status + date filter ── */}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder="Search expenses..." value={companySearch} onChange={e => setCompanySearch(e.target.value)} className="pl-9" />
+              </div>
+              <Select value={companyStatusFilter} onValueChange={setCompanyStatusFilter}>
+                <SelectTrigger className="w-36"><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="PAID">Paid</SelectItem>
+                  <SelectItem value="UNPAID">Unpaid</SelectItem>
+                  <SelectItem value="PARTIAL">Partial</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span className="text-xs text-muted-foreground font-medium">Date Range</span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Input
+                  type="date"
+                  value={companyDateFrom}
+                  onChange={e => setCompanyDateFrom(e.target.value)}
+                  className="w-40 h-9 text-sm"
+                />
+                <span className="text-xs text-muted-foreground">to</span>
+                <Input
+                  type="date"
+                  value={companyDateTo}
+                  onChange={e => setCompanyDateTo(e.target.value)}
+                  className="w-40 h-9 text-sm"
+                />
+                {(companyDateFrom || companyDateTo) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 px-2 text-muted-foreground hover:text-foreground"
+                    onClick={() => { setCompanyDateFrom(""); setCompanyDateTo(""); }}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                )}
               </div>
             </div>
-          )} */}
-
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Search expenses..." value={companySearch} onChange={e => setCompanySearch(e.target.value)} className="pl-9" />
-            </div>
-            <Select value={companyStatusFilter} onValueChange={setCompanyStatusFilter}>
-              <SelectTrigger className="w-36"><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="PAID">Paid</SelectItem>
-                <SelectItem value="UNPAID">Unpaid</SelectItem>
-                <SelectItem value="PARTIAL">Partial</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           {companyLoading ? (
@@ -502,21 +561,54 @@ export default function CostsPage() {
             </div>
           )}
 
-          {/* ── Search + status filter ── */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Search by description or vendor..." value={projectSearch} onChange={e => setProjectSearch(e.target.value)} className="pl-9" />
+          {/* ── Search + status + date filter ── */}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder="Search by description or vendor..." value={projectSearch} onChange={e => setProjectSearch(e.target.value)} className="pl-9" />
+              </div>
+              <Select value={projectStatusFilter} onValueChange={setProjectStatusFilter}>
+                <SelectTrigger className="w-36"><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="PAID">Paid</SelectItem>
+                  <SelectItem value="UNPAID">Unpaid</SelectItem>
+                  <SelectItem value="PARTIAL">Partial</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={projectStatusFilter} onValueChange={setProjectStatusFilter}>
-              <SelectTrigger className="w-36"><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="PAID">Paid</SelectItem>
-                <SelectItem value="UNPAID">Unpaid</SelectItem>
-                <SelectItem value="PARTIAL">Partial</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span className="text-xs text-muted-foreground font-medium">Date Range</span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Input
+                  type="date"
+                  value={projectDateFrom}
+                  onChange={e => setProjectDateFrom(e.target.value)}
+                  className="w-40 h-9 text-sm"
+                />
+                <span className="text-xs text-muted-foreground">to</span>
+                <Input
+                  type="date"
+                  value={projectDateTo}
+                  onChange={e => setProjectDateTo(e.target.value)}
+                  className="w-40 h-9 text-sm"
+                />
+                {(projectDateFrom || projectDateTo) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 px-2 text-muted-foreground hover:text-foreground"
+                    onClick={() => { setProjectDateFrom(""); setProjectDateTo(""); }}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
 
           {projectLoading ? (
