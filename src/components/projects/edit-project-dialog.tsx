@@ -187,7 +187,7 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Edit
             {/* Budget */}
             <div className="space-y-1.5">
               <Label>Estimated Budget (BDT) *</Label>
-              <Input {...register("estimatedBudget")} type="number" step="1000" placeholder="0" />
+              <Input {...register("estimatedBudget")} type="number" step="any" min="0" placeholder="0" />
               {errors.estimatedBudget && <p className="text-red-500 text-xs">{errors.estimatedBudget.message}</p>}
             </div>
 

@@ -228,7 +228,7 @@ export function CreateProjectDialog({ open, onOpenChange, onCreated }: CreatePro
             {/* Budget */}
             <div className="space-y-1.5">
               <Label>Estimated Budget (BDT) *</Label>
-              <Input {...register("estimatedBudget")} type="number" placeholder="0.00" min="0" />
+              <Input {...register("estimatedBudget")} type="number" placeholder="0" min="0" step="any" />
               {errors.estimatedBudget && <p className="text-red-500 text-xs">{errors.estimatedBudget.message}</p>}
             </div>
 
