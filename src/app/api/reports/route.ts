@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
     const projectFilter = projectId ? { projectId } : {};
 
-    const [payments, costs, projects] = await Promise.all([
+    const [payments, costs, companyExpenses, projects] = await Promise.all([
       prisma.projectPayment.findMany({
         where: {
           paymentDate: dateFilter,
@@ -44,6 +44,10 @@ export async function GET(req: NextRequest) {
         },
         orderBy: { date: "desc" },
       }),
+      prisma.companyExpense.findMany({
+        where: { date: dateFilter },
+        select: { amount: true },
+      }),
       prisma.project.findMany({
         include: {
           client: { select: { name: true } },
@@ -55,7 +59,10 @@ export async function GET(req: NextRequest) {
     ]);
 
     const totalRevenue = payments.reduce((a, p) => a + Number(p.amount), 0);
-    const totalExpenses = costs.reduce((a, c) => a + Number(c.totalCost), 0);
+    const totalProjectCosts = costs.reduce((a, c) => a + Number(c.totalCost), 0);
+    const totalCompanyExpenses = companyExpenses.reduce((a, e) => a + Number(e.amount), 0);
+    const totalExpenses = totalProjectCosts + totalCompanyExpenses;
+    const totalProjectBudgets = projects.reduce((a, p) => a + Number(p.estimatedBudget), 0);
 
     const expenseByCategory = costs.reduce((acc: Record<string, number>, cost) => {
       const catName = cost.categoryId;
@@ -80,8 +87,11 @@ export async function GET(req: NextRequest) {
       summary: {
         totalRevenue,
         totalExpenses,
-        netProfit: totalRevenue - totalExpenses,
-        profitMargin: totalRevenue > 0 ? ((totalRevenue - totalExpenses) / totalRevenue) * 100 : 0,
+        totalProjectCosts,
+        totalCompanyExpenses,
+        totalProjectBudgets,
+        netProfit: totalProjectBudgets - totalExpenses,
+        profitMargin: totalProjectBudgets > 0 ? ((totalProjectBudgets - totalExpenses) / totalProjectBudgets) * 100 : 0,
       },
       payments,
       costs,

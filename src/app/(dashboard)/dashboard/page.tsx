@@ -8,8 +8,8 @@ import {
   ArrowUpRight, Receipt, CreditCard, Loader2,
 } from "lucide-react";
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip,
-  ResponsiveContainer, PieChart, Pie, Cell,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip,
+  ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,9 @@ import Link from "next/link";
 type Summary = {
   totalRevenue: number;
   totalExpenses: number;
+  totalProjectCosts: number;
+  totalCompanyExpenses: number;
+  totalProjectBudgets: number;
   netProfit: number;
   profitMargin: number;
 };
@@ -56,7 +59,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [monthlyData, setMonthlyData] = useState<MonthlyEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
+  const [expenseBreakdown, setExpenseBreakdown] = useState<ExpenseCategory[]>([]);
   const [projectCounts, setProjectCounts] = useState({ total: 0, running: 0, completed: 0, onHold: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -76,13 +79,12 @@ export default function DashboardPage() {
               new Date(a.month).getTime() - new Date(b.month).getTime()
             )
           );
-          const catObj: Record<string, number> = r.expenseByCategory ?? {};
-          const cats = Object.entries(catObj).map(([name, value], i) => ({
-            name,
-            value: Math.round((value / (r.summary.totalExpenses || 1)) * 100),
-            color: PIE_COLORS[i % PIE_COLORS.length],
-          }));
-          setExpenseCategories(cats);
+          const projectCosts = Number(r.summary.totalProjectCosts ?? 0);
+          const companyExp = Number(r.summary.totalCompanyExpenses ?? 0);
+          const breakdown: ExpenseCategory[] = [];
+          if (projectCosts > 0) breakdown.push({ name: "Project Costs", value: projectCosts, color: "#3b82f6" });
+          if (companyExp > 0) breakdown.push({ name: "Company Expenses", value: companyExp, color: "#8b5cf6" });
+          setExpenseBreakdown(breakdown);
         }
 
         if (projectsRes.ok) {
@@ -119,12 +121,13 @@ export default function DashboardPage() {
     { title: "Running", value: String(projectCounts.running), icon: Activity, color: "orange" as const },
     { title: "Completed", value: String(projectCounts.completed), icon: CheckCircle, color: "green" as const },
     { title: "On Hold", value: String(projectCounts.onHold), icon: Clock, color: "red" as const },
-    { title: "Total Revenue", value: fmt(summary.totalRevenue), icon: DollarSign, color: "green" as const },
-    { title: "Total Expenses", value: fmt(summary.totalExpenses), icon: TrendingDown, color: "red" as const },
-    { title: "Net Profit", value: fmt(summary.netProfit), icon: TrendingUp, color: "purple" as const },
     { title: "Profit Margin", value: `${summary.profitMargin.toFixed(1)}%`, icon: Receipt, color: "teal" as const },
+    { title: "Total Budgets", value: fmt(summary.totalProjectBudgets), icon: FolderKanban, color: "orange" as const },
     { title: "Total Paid", value: fmt(projects.reduce((a, p) => a + p.totalPaid, 0)), icon: CreditCard, color: "blue" as const },
+    { title: "Total Expenses", value: fmt(summary.totalExpenses), icon: TrendingDown, color: "red" as const },
     { title: "Total Due", value: fmt(projects.reduce((a, p) => a + p.totalDue, 0)), icon: AlertCircle, color: "red" as const },
+    // { title: "Total Revenue", value: fmt(summary.totalRevenue), icon: DollarSign, color: "green" as const },
+    { title: "Net Profit", value: fmt(summary.netProfit), icon: TrendingUp, color: "purple" as const },
   ] : [];
 
   if (loading) {
@@ -176,66 +179,60 @@ export default function DashboardPage() {
         <motion.div className="lg:col-span-2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
           <Card>
             <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">Revenue vs Expenses</CardTitle>
-                  <CardDescription>Monthly financial performance</CardDescription>
-                </div>
-                <div className="flex gap-3 text-xs">
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />Revenue</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" />Expenses</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />Profit</span>
-                </div>
+              <div>
+                <CardTitle className="text-base">Revenue vs Expenses</CardTitle>
+                <CardDescription>Monthly financial performance</CardDescription>
               </div>
             </CardHeader>
             <CardContent>
               {monthlyData.length === 0 ? (
-                <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">
+                <div className="h-[260px] flex items-center justify-center text-muted-foreground text-sm">
                   No financial data for this period yet
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={250}>
-                  <AreaChart data={monthlyData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                    <defs>
-                      <linearGradient id="revenue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="expenses" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15} />
-                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="profit" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.15} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `৳${Number(v).toLocaleString("en-IN")}`} />
-                    <RechartTooltip
-                      formatter={(value: unknown) => [`৳${Number(value).toLocaleString("en-IN")}`, ""]}
-                      contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))" }}
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={monthlyData} margin={{ top: 5, right: 10, left: 5, bottom: 5 }} barCategoryGap="30%" barGap={3}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v) => `৳${Number(v).toLocaleString("en-IN")}`}
+                      axisLine={false}
+                      tickLine={false}
                     />
-                    <Area type="monotone" dataKey="revenue" stroke="#3b82f6" fill="url(#revenue)" strokeWidth={2} />
-                    <Area type="monotone" dataKey="expenses" stroke="#ef4444" fill="url(#expenses)" strokeWidth={2} />
-                    <Area type="monotone" dataKey="profit" stroke="#10b981" fill="url(#profit)" strokeWidth={2} />
-                  </AreaChart>
+                    <RechartTooltip
+                      formatter={(value: unknown, name: unknown) => [
+                        `৳${Number(value).toLocaleString("en-IN")}`,
+                        String(name).charAt(0).toUpperCase() + String(name).slice(1),
+                      ]}
+                      contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", fontSize: 12 }}
+                      cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
+                    />
+                    <Legend
+                      iconType="square"
+                      iconSize={10}
+                      wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
+                      formatter={(value) => value.charAt(0).toUpperCase() + value.slice(1)}
+                    />
+                    <Bar dataKey="revenue" name="income"   fill="#3b82f6" radius={[3, 3, 0, 0]} maxBarSize={22} />
+                    <Bar dataKey="expenses" name="expenses" fill="#93c5fd" radius={[3, 3, 0, 0]} maxBarSize={22} />
+                    <Bar dataKey="profit"   name="profit"  fill="#10b981" radius={[3, 3, 0, 0]} maxBarSize={22} />
+                  </BarChart>
                 </ResponsiveContainer>
               )}
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Expense Category Pie */}
+        {/* Expense Breakdown Pie */}
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
           <Card className="h-full">
             <CardHeader className="pb-4">
               <CardTitle className="text-base">Expense Breakdown</CardTitle>
-              <CardDescription>By category</CardDescription>
+              <CardDescription>Company expenses vs project costs</CardDescription>
             </CardHeader>
             <CardContent>
-              {expenseCategories.length === 0 ? (
+              {expenseBreakdown.length === 0 ? (
                 <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
                   No expense data yet
                 </div>
@@ -243,22 +240,39 @@ export default function DashboardPage() {
                 <>
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
-                      <Pie data={expenseCategories} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={3} dataKey="value">
-                        {expenseCategories.map((entry, index) => (
+                      <Pie data={expenseBreakdown} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={3} dataKey="value">
+                        {expenseBreakdown.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <RechartTooltip formatter={(value: unknown) => [`${Number(value)}%`, ""]} />
+                      <RechartTooltip
+                        formatter={(value: unknown) => [`৳${Number(value).toLocaleString("en-IN")}`, ""]}
+                        contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))" }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
-                  <div className="grid grid-cols-2 gap-1.5 mt-3">
-                    {expenseCategories.map((cat) => (
-                      <div key={cat.name} className="flex items-center gap-1.5 text-xs">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cat.color }} />
-                        <span className="text-muted-foreground truncate">{cat.name}</span>
-                        <span className="font-medium ml-auto">{cat.value}%</span>
-                      </div>
-                    ))}
+                  <div className="space-y-2.5 mt-4">
+                    {expenseBreakdown.map((cat) => {
+                      const total = expenseBreakdown.reduce((a, c) => a + c.value, 0);
+                      const pct = total > 0 ? Math.round((cat.value / total) * 100) : 0;
+                      return (
+                        <div key={cat.name}>
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: cat.color }} />
+                              <span className="font-medium">{cat.name}</span>
+                            </span>
+                            <span className="text-muted-foreground">{pct}%</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: cat.color }} />
+                          </div>
+                          <p className="text-xs font-semibold mt-0.5" style={{ color: cat.color }}>
+                            {fmt(cat.value)}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
                 </>
               )}
