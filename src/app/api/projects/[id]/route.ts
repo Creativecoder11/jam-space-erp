@@ -76,12 +76,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "SUPER_ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;
+
+    // Delete all child records before deleting the project
+    // (no onDelete: Cascade in schema — Prisma enforces this client-side)
+    await prisma.activityLog.deleteMany({ where: { projectId: id } });
+    await prisma.invoice.deleteMany({ where: { projectId: id } });
+    await prisma.document.deleteMany({ where: { projectId: id } });
+    await prisma.projectNote.deleteMany({ where: { projectId: id } });
+    await prisma.projectCost.deleteMany({ where: { projectId: id } });
+    await prisma.projectPayment.deleteMany({ where: { projectId: id } });
     await prisma.project.delete({ where: { id } });
+
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

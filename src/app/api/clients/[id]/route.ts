@@ -63,6 +63,24 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;
+
+    // Find all projects belonging to this client so we can cascade-delete their children
+    const projects = await prisma.project.findMany({
+      where: { clientId: id },
+      select: { id: true },
+    });
+    const projectIds = projects.map((p) => p.id);
+
+    if (projectIds.length > 0) {
+      await prisma.activityLog.deleteMany({ where: { projectId: { in: projectIds } } });
+      await prisma.invoice.deleteMany({ where: { projectId: { in: projectIds } } });
+      await prisma.document.deleteMany({ where: { projectId: { in: projectIds } } });
+      await prisma.projectNote.deleteMany({ where: { projectId: { in: projectIds } } });
+      await prisma.projectCost.deleteMany({ where: { projectId: { in: projectIds } } });
+      await prisma.projectPayment.deleteMany({ where: { projectId: { in: projectIds } } });
+      await prisma.project.deleteMany({ where: { id: { in: projectIds } } });
+    }
+
     await prisma.client.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch {
