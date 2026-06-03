@@ -29,6 +29,8 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search") ?? "";
     const status = searchParams.get("status");
     const type = searchParams.get("type");
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
 
     const where: Record<string, unknown> = {};
     if (search) {
@@ -38,6 +40,12 @@ export async function GET(req: NextRequest) {
     }
     if (status) where.status = status;
     if (type) where.type = type;
+    if (from || to) {
+      where.startDate = {
+        ...(from ? { gte: new Date(from) } : {}),
+        ...(to ? { lte: new Date(to) } : {}),
+      };
+    }
 
     const [projects, total] = await Promise.all([
       prisma.project.findMany({

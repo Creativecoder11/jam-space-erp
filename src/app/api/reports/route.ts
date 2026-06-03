@@ -11,39 +11,38 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const from = searchParams.get("from");
     const to = searchParams.get("to");
+    const allTime = searchParams.get("all") === "true";
     const projectId = searchParams.get("projectId");
     const clientId = searchParams.get("clientId");
 
-    const dateFilter = {
+    const dateFilter = allTime ? null : {
       gte: from ? new Date(from) : new Date(new Date().getFullYear(), 0, 1),
       lte: to ? new Date(to) : new Date(),
     };
 
     const projectFilter = projectId ? { projectId } : {};
 
-    const [payments, costs, companyExpenses, allTimeCompanyExpenses, projects] = await Promise.all([
+    const projectDateFilter = (projectId || !dateFilter) ? {} : { startDate: dateFilter };
+
+    const [payments, costs, companyExpenses, projects] = await Promise.all([
       prisma.projectPayment.findMany({
-        where: { paymentDate: dateFilter, ...projectFilter },
+        where: { ...(dateFilter ? { paymentDate: dateFilter } : {}), ...projectFilter },
         include: {
           project: { select: { name: true, client: { select: { name: true } } } },
         },
         orderBy: { paymentDate: "desc" },
       }),
       prisma.projectCost.findMany({
-        where: { date: dateFilter, ...projectFilter },
+        where: { ...(dateFilter ? { date: dateFilter } : {}), ...projectFilter },
         include: { project: { select: { name: true } } },
         orderBy: { date: "desc" },
       }),
-      // date-filtered company expenses (for chart/monthly data)
       prisma.companyExpense.findMany({
-        where: { date: dateFilter },
-        select: { amount: true },
-      }),
-      // all-time company expenses (for dashboard totals)
-      prisma.companyExpense.findMany({
+        where: dateFilter ? { date: dateFilter } : {},
         select: { amount: true },
       }),
       prisma.project.findMany({
+        where: projectDateFilter,
         include: {
           client: { select: { name: true } },
           payments: { select: { amount: true } },
@@ -53,20 +52,20 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
-    // Date-filtered (for charts / period summaries)
+    // Period-filtered (payments/costs/expenses within the selected year window)
     const totalRevenue = payments.reduce((a, p) => a + Number(p.amount), 0);
     const totalProjectCosts = costs.reduce((a, c) => a + Number(c.totalCost), 0);
     const totalCompanyExpenses = companyExpenses.reduce((a, e) => a + Number(e.amount), 0);
     const totalExpenses = totalProjectCosts + totalCompanyExpenses;
 
-    // All-time (for dashboard stat cards — no date restriction)
+    // Year-scoped stat-card figures (projects filtered by startDate in the selected year)
     const allTimeTotalPaid = projects.reduce(
       (a, p) => a + p.payments.reduce((s, pay) => s + Number(pay.amount), 0), 0
     );
     const allTimeProjectCosts = projects.reduce(
       (a, p) => a + p.costs.reduce((s, c) => s + Number(c.totalCost), 0), 0
     );
-    const allTimeCompanyExpensesTotal = allTimeCompanyExpenses.reduce((a, e) => a + Number(e.amount), 0);
+    const allTimeCompanyExpensesTotal = totalCompanyExpenses;
     const allTimeGrandExpenses = allTimeProjectCosts + allTimeCompanyExpensesTotal;
     const totalProjectBudgets = projects.reduce((a, p) => a + Number(p.estimatedBudget), 0);
     const allTimeTotalDue = Math.max(0, totalProjectBudgets - allTimeTotalPaid);

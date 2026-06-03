@@ -47,6 +47,12 @@ type Project = {
 
 type ExpenseCategory = { name: string; value: number; color: string };
 
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS: Array<number | "all"> = [
+  "all",
+  ...Array.from({ length: CURRENT_YEAR - 2022 }, (_, i) => CURRENT_YEAR - i),
+];
+
 const PIE_COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#6b7280", "#ec4899", "#14b8a6"];
 
 const colorMap = {
@@ -61,6 +67,7 @@ const colorMap = {
 const fmt = (n: number) => `৳${n.toLocaleString("en-IN")}`;
 
 export default function DashboardPage() {
+  const [selectedYear, setSelectedYear] = useState<number | "all">(CURRENT_YEAR);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [monthlyData, setMonthlyData] = useState<MonthlyEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -70,10 +77,14 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const fetchAll = async () => {
+      setLoading(true);
       try {
+        const dateParams = selectedYear === "all"
+          ? "all=true"
+          : `from=${selectedYear}-01-01&to=${selectedYear}-12-31`;
         const [reportsRes, projectsRes] = await Promise.all([
-          fetch("/api/reports"),
-          fetch("/api/projects?pageSize=5"),
+          fetch(`/api/reports?${dateParams}`),
+          fetch(`/api/projects?pageSize=5${selectedYear === "all" ? "" : `&from=${selectedYear}-01-01&to=${selectedYear}-12-31`}`),
         ]);
 
         if (reportsRes.ok) {
@@ -119,7 +130,7 @@ export default function DashboardPage() {
       }
     };
     fetchAll();
-  }, []);
+  }, [selectedYear]);
 
   const stats = summary ? [
     { title: "Total Projects", value: String(projectCounts.total), icon: FolderKanban, color: "blue" as const },
@@ -135,7 +146,9 @@ export default function DashboardPage() {
     { title: "Net Profit", value: fmt(summary.netProfit), icon: TrendingUp, color: "purple" as const },
   ] : [];
 
-  if (loading) {
+  const isInitialLoad = loading && !summary;
+
+  if (isInitialLoad) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -144,13 +157,31 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={cn("space-y-6 transition-opacity", loading ? "opacity-60 pointer-events-none" : "opacity-100")}>
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Welcome back! Here&apos;s an overview of your business performance.
-        </p>
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Welcome back! Here&apos;s an overview of your business performance.
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 bg-muted/50 rounded-lg p-1 border border-border/50 self-start sm:self-auto">
+          {YEAR_OPTIONS.map((year) => (
+            <button
+              key={year}
+              onClick={() => setSelectedYear(year)}
+              className={cn(
+                "px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+                selectedYear === year
+                  ? "bg-background shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {year === "all" ? "All" : year}
+            </button>
+          ))}
+        </div>
       </motion.div>
 
       {/* Stats Grid */}
@@ -185,17 +216,17 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="pb-4">
               <div>
-                <CardTitle className="text-base">Revenue vs Expenses</CardTitle>
+                <CardTitle className="text-base">Income vs Expenses</CardTitle>
                 <CardDescription>Monthly financial performance</CardDescription>
               </div>
             </CardHeader>
             <CardContent>
               {monthlyData.length === 0 ? (
-                <div className="h-[260px] flex items-center justify-center text-muted-foreground text-sm">
+                <div className="h-[360px] flex items-center justify-center text-muted-foreground text-sm">
                   No financial data for this period yet
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={260}>
+                <ResponsiveContainer width="100%" height={360}>
                   <BarChart data={monthlyData} margin={{ top: 5, right: 10, left: 5, bottom: 5 }} barCategoryGap="30%" barGap={3}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -219,9 +250,8 @@ export default function DashboardPage() {
                       wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
                       formatter={(value) => value.charAt(0).toUpperCase() + value.slice(1)}
                     />
-                    <Bar dataKey="revenue" name="income"   fill="#3b82f6" radius={[3, 3, 0, 0]} maxBarSize={22} />
-                    <Bar dataKey="expenses" name="expenses" fill="#93c5fd" radius={[3, 3, 0, 0]} maxBarSize={22} />
-                    <Bar dataKey="profit"   name="profit"  fill="#10b981" radius={[3, 3, 0, 0]} maxBarSize={22} />
+                    <Bar dataKey="revenue"  name="Income"   fill="#3b82f6" radius={[3, 3, 0, 0]} maxBarSize={28} />
+                    <Bar dataKey="expenses" name="Expenses" fill="#f87171" radius={[3, 3, 0, 0]} maxBarSize={28} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
