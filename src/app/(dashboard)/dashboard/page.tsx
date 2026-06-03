@@ -23,6 +23,9 @@ type Summary = {
   totalProjectCosts: number;
   totalCompanyExpenses: number;
   totalProjectBudgets: number;
+  allTimeTotalPaid: number;
+  allTimeGrandExpenses: number;
+  allTimeTotalDue: number;
   netProfit: number;
   profitMargin: number;
 };
@@ -123,9 +126,9 @@ export default function DashboardPage() {
     { title: "On Hold", value: String(projectCounts.onHold), icon: Clock, color: "red" as const },
     { title: "Profit Margin", value: `${summary.profitMargin.toFixed(1)}%`, icon: Receipt, color: "teal" as const },
     { title: "Total Budgets", value: fmt(summary.totalProjectBudgets), icon: FolderKanban, color: "orange" as const },
-    { title: "Total Paid", value: fmt(projects.reduce((a, p) => a + p.totalPaid, 0)), icon: CreditCard, color: "blue" as const },
-    { title: "Total Expenses", value: fmt(summary.totalExpenses), icon: TrendingDown, color: "red" as const },
-    { title: "Total Due", value: fmt(projects.reduce((a, p) => a + p.totalDue, 0)), icon: AlertCircle, color: "red" as const },
+    { title: "Total Paid", value: fmt(summary.allTimeTotalPaid), icon: CreditCard, color: "blue" as const },
+    { title: "Total Expenses", value: fmt(summary.allTimeGrandExpenses), icon: TrendingDown, color: "red" as const },
+    { title: "Total Due", value: fmt(summary.allTimeTotalDue), icon: AlertCircle, color: "red" as const },
     // { title: "Total Revenue", value: fmt(summary.totalRevenue), icon: DollarSign, color: "green" as const },
     { title: "Net Profit", value: fmt(summary.netProfit), icon: TrendingUp, color: "purple" as const },
   ] : [];

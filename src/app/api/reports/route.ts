@@ -21,31 +21,26 @@ export async function GET(req: NextRequest) {
 
     const projectFilter = projectId ? { projectId } : {};
 
-    const [payments, costs, companyExpenses, projects] = await Promise.all([
+    const [payments, costs, companyExpenses, allTimeCompanyExpenses, projects] = await Promise.all([
       prisma.projectPayment.findMany({
-        where: {
-          paymentDate: dateFilter,
-          ...projectFilter,
-        },
+        where: { paymentDate: dateFilter, ...projectFilter },
         include: {
-          project: {
-            select: { name: true, client: { select: { name: true } } },
-          },
+          project: { select: { name: true, client: { select: { name: true } } } },
         },
         orderBy: { paymentDate: "desc" },
       }),
       prisma.projectCost.findMany({
-        where: {
-          date: dateFilter,
-          ...projectFilter,
-        },
-        include: {
-          project: { select: { name: true } },
-        },
+        where: { date: dateFilter, ...projectFilter },
+        include: { project: { select: { name: true } } },
         orderBy: { date: "desc" },
       }),
+      // date-filtered company expenses (for chart/monthly data)
       prisma.companyExpense.findMany({
         where: { date: dateFilter },
+        select: { amount: true },
+      }),
+      // all-time company expenses (for dashboard totals)
+      prisma.companyExpense.findMany({
         select: { amount: true },
       }),
       prisma.project.findMany({
@@ -58,11 +53,23 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
+    // Date-filtered (for charts / period summaries)
     const totalRevenue = payments.reduce((a, p) => a + Number(p.amount), 0);
     const totalProjectCosts = costs.reduce((a, c) => a + Number(c.totalCost), 0);
     const totalCompanyExpenses = companyExpenses.reduce((a, e) => a + Number(e.amount), 0);
     const totalExpenses = totalProjectCosts + totalCompanyExpenses;
+
+    // All-time (for dashboard stat cards — no date restriction)
+    const allTimeTotalPaid = projects.reduce(
+      (a, p) => a + p.payments.reduce((s, pay) => s + Number(pay.amount), 0), 0
+    );
+    const allTimeProjectCosts = projects.reduce(
+      (a, p) => a + p.costs.reduce((s, c) => s + Number(c.totalCost), 0), 0
+    );
+    const allTimeCompanyExpensesTotal = allTimeCompanyExpenses.reduce((a, e) => a + Number(e.amount), 0);
+    const allTimeGrandExpenses = allTimeProjectCosts + allTimeCompanyExpensesTotal;
     const totalProjectBudgets = projects.reduce((a, p) => a + Number(p.estimatedBudget), 0);
+    const allTimeTotalDue = Math.max(0, totalProjectBudgets - allTimeTotalPaid);
 
     const expenseByCategory = costs.reduce((acc: Record<string, number>, cost) => {
       const catName = cost.categoryId;
@@ -90,8 +97,12 @@ export async function GET(req: NextRequest) {
         totalProjectCosts,
         totalCompanyExpenses,
         totalProjectBudgets,
-        netProfit: totalProjectBudgets - totalExpenses,
-        profitMargin: totalProjectBudgets > 0 ? ((totalProjectBudgets - totalExpenses) / totalProjectBudgets) * 100 : 0,
+        // All-time figures for dashboard stat cards
+        allTimeTotalPaid,
+        allTimeGrandExpenses,
+        allTimeTotalDue,
+        netProfit: allTimeTotalPaid - allTimeGrandExpenses,
+        profitMargin: allTimeTotalPaid > 0 ? ((allTimeTotalPaid - allTimeGrandExpenses) / allTimeTotalPaid) * 100 : 0,
       },
       payments,
       costs,

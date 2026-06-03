@@ -125,10 +125,12 @@ export default function CostsPage() {
 
   const fetchPaymentTotal = useCallback(async () => {
     try {
-      const res = await fetch("/api/reports");
+      // Fetch all payments (no date filter) to get the all-time total received from clients
+      const res = await fetch("/api/payments?pageSize=9999");
       if (res.ok) {
         const json = await res.json();
-        setTotalClientPayments(json.summary?.totalRevenue ?? 0);
+        const total = (json.data ?? []).reduce((sum: number, p: Record<string, unknown>) => sum + Number(p.amount), 0);
+        setTotalClientPayments(total);
       }
     } catch { /* silent */ }
   }, []);
