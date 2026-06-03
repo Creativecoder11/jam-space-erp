@@ -99,6 +99,8 @@ export async function GET(req: NextRequest) {
         totalProjectBudgets,
         // All-time figures for dashboard stat cards
         allTimeTotalPaid,
+        allTimeProjectCosts,
+        allTimeCompanyExpensesTotal,
         allTimeGrandExpenses,
         allTimeTotalDue,
         netProfit: allTimeTotalPaid - allTimeGrandExpenses,

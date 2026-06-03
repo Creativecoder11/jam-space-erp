@@ -24,6 +24,8 @@ type Summary = {
   totalCompanyExpenses: number;
   totalProjectBudgets: number;
   allTimeTotalPaid: number;
+  allTimeProjectCosts: number;
+  allTimeCompanyExpensesTotal: number;
   allTimeGrandExpenses: number;
   allTimeTotalDue: number;
   netProfit: number;
@@ -82,8 +84,8 @@ export default function DashboardPage() {
               new Date(a.month).getTime() - new Date(b.month).getTime()
             )
           );
-          const projectCosts = Number(r.summary.totalProjectCosts ?? 0);
-          const companyExp = Number(r.summary.totalCompanyExpenses ?? 0);
+          const projectCosts = Number(r.summary.allTimeProjectCosts ?? 0);
+          const companyExp = Number(r.summary.allTimeCompanyExpensesTotal ?? 0);
           const breakdown: ExpenseCategory[] = [];
           if (projectCosts > 0) breakdown.push({ name: "Project Costs", value: projectCosts, color: "#3b82f6" });
           if (companyExp > 0) breakdown.push({ name: "Company Expenses", value: companyExp, color: "#8b5cf6" });
